@@ -45,9 +45,9 @@ end
 get '/queue/pop' do
   event = REDIS.lpop(EVENT_QUEUE)
   if event
-    json_response(true, JSON.parse(event))
+    json_response(true, {:item => JSON.parse(event)})
   else
-    json_response(true, {}, "Queue empty")
+    json_response(true, {:item => nil})
   end
 end
 
@@ -68,13 +68,7 @@ get '/queue/all' do
     end
   end
 
-
-  if list.size > 0
-    json_response(true, {:items => list, :count => list.size})
-  else
-    json_response(true, {}, "Queue empty")
-  end
-
+  json_response(true, {:items => list, :item_count => list.size})
 end
 
 
