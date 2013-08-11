@@ -7,6 +7,8 @@ gem "sidekiq"
 gem "newrelic_rpm"
 gem "unicorn"
 gem "crack"
+gem "twilio-ruby"
+
 
 
 group :test do
