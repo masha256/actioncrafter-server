@@ -13,8 +13,8 @@ class TwilioWorker
 
     TWILIO.account.sms.messages.create(
         :from => '+19162356999',
-        :to => params[:to],
-        :body => params[:message]
+        :to => event['to'],
+        :body => event['message']
     )
 
   end
