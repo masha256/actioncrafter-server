@@ -7,11 +7,6 @@ require 'crack'
 require 'sidekiq'
 require 'redis'
 
-require 'twilio-ruby'
-
-
-
-
 
 EVENT_QUEUE='events'
 
@@ -26,10 +21,9 @@ ENV["REDISTOGO_URL"] ||= "redis://localhost:6379/"
 uri = URI.parse(ENV["REDISTOGO_URL"])
 REDIS = Redis.new(:host => uri.host, :port => uri.port, :password => uri.password)
 
-TWILIO = Twilio::REST::Client.new('AC2738c42b6d6a978bb08219565aa2385c', '31bfaaf56b068e1f17de3a41d66178ac')
-
 # workers
 require './workers/event_worker'
+require './workers/twilio_worker'
 
 
 
@@ -38,24 +32,14 @@ get '/event' do
     halt 400, json_response(false, {}, "Missing event name")
   end
 
-  do_queue = true
-
   params['_date'] = Time::now.to_i
-  if params[:name] == 'ext'
-    EventWorker.perform_async(params)
-  end
 
   if params[:name] == 'ac_sendsms'
-    TWILIO.account.sms.messages.create(
-        :from => '+19162356999',
-        :to => params[:to],
-        :body => params[:message]
-    )
-    do_queue = false
-  end
+    TwilioWorker.perform_async(params)
+  elsif params[:name] == 'ac_twitter'
 
-  if do_queue
-    REDIS.rpush(EVENT_QUEUE, params.to_json)
+  else
+      REDIS.rpush(EVENT_QUEUE, params.to_json)
   end
 
   json_response(true)
