@@ -83,7 +83,7 @@ get '/ping' do
 end
 
 
-def json_response(status, data = {}, error="")
+def json_response(status, data = {}, error='')
   content_type :json
   if error.empty?
     result =  {:success => status}.merge(data).to_json
