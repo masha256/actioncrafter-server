@@ -8,14 +8,13 @@ require 'sidekiq'
 require 'redis'
 
 
-EVENT_QUEUE='events'
-
-
 # hand over exception handling to our handlers defined below
 disable :show_exceptions
 disable :raise_errors
 #disable :dump_errors
 set :protection, :except => :json_csrf
+
+API_KEYS = 'api_keys'
 
 ENV["REDISTOGO_URL"] ||= "redis://localhost:6379/"
 uri = URI.parse(ENV["REDISTOGO_URL"])
@@ -27,7 +26,10 @@ require './workers/twilio_worker'
 
 
 
-get '/event' do
+get '/queue/:queue/event' do
+
+  check_api_key(params[:key])
+
   unless params[:name]
     halt 400, json_response(false, {}, "Missing event name")
   end
@@ -39,15 +41,26 @@ get '/event' do
   elsif params[:name] == 'ac_twitter'
 
   else
-      REDIS.rpush(EVENT_QUEUE, params.to_json)
+      event = params.dup
+
+      # clean up sinatra default keys
+      event.delete('splat')
+      event.delete('captures')
+      event.delete('key')
+      event.delete('queue')
+
+      REDIS.rpush(queue_name(params[:queue], params[:key]), event.to_json)
   end
 
   json_response(true)
 end
 
 
-get '/queue/pop' do
-  event = REDIS.lpop(EVENT_QUEUE)
+get '/queue/:queue/pop' do
+
+  check_api_key(params[:key])
+
+  event = REDIS.lpop(queue_name(params[:queue], params[:key]))
   if event
     json_response(true, {:item => JSON.parse(event)})
   else
@@ -55,19 +68,21 @@ get '/queue/pop' do
   end
 end
 
-get '/queue/all' do
+get '/queue/:queue/all' do
+
+  check_api_key(params[:key])
 
   list = Array.new
 
   if params[:save] == '1'
-    items = REDIS.lrange(EVENT_QUEUE, 0, -1)
+    items = REDIS.lrange(queue_name(params[:queue], params[:key]), 0, -1)
     items.each do |i|
       list.push(JSON.parse(i))
     end
   else
-    len = REDIS.llen(EVENT_QUEUE)
+    len = REDIS.llen(queue_name(params[:queue], params[:key]))
     len.times do
-      item = REDIS.lpop(EVENT_QUEUE)
+      item = REDIS.lpop(queue_name(params[:queue], params[:key]))
       list.push(JSON.parse(item))
     end
   end
@@ -98,6 +113,22 @@ def json_response(status, data = {}, error='')
   end
 
 end
+
+def queue_name(name, key)
+  if name && name.match(/^[a-zA-Z0-9\-_]{3,32}$/)
+    key+'_'+name
+  else
+    raise 'Invalid queue name'
+  end
+end
+
+def check_api_key(key)
+  unless REDIS.hexists(API_KEYS, key)
+    raise 'Invalid API key'
+  end
+  REDIS.hincrby(API_KEYS, key, 1)
+end
+
 
 
 error do
