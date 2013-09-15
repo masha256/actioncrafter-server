@@ -22,8 +22,42 @@ REDIS = Redis.new(:host => uri.host, :port => uri.port, :password => uri.passwor
 
 # workers
 require './workers/event_worker'
-require './workers/twilio_worker'
 
+# actions
+require './actions'
+
+
+get '/action' do
+  check_api_key(params[:key])
+
+  unless params[:name]
+    halt 400, json_response(false, {}, "Missing action name")
+  end
+
+  source = params[:source] || 'default'
+  event = params.dup
+
+  # clean up sinatra default keys
+  event.delete('splat')
+  event.delete('captures')
+  event.delete('key')
+
+  event['_date'] = Time::now.to_i
+
+
+  begin
+    klass = Object.const_get('Action').const_get(params[:name].capitalize)
+    action = klass.new
+    action.process(event)
+  rescue
+    puts "No class found for action #{params[:name]}, queuing instead"
+
+    REDIS.rpush(queue_name(source, params[:key]), event.to_json)
+  end
+
+
+  json_response(true)
+end
 
 
 get '/queue/:queue/event' do
@@ -115,7 +149,7 @@ def json_response(status, data = {}, error='')
 end
 
 def queue_name(name, key)
-  if name && name.match(/^[a-zA-Z0-9\-_]{3,32}$/)
+  if name && name.match(/^[a-zA-Z0-9\-_]{2,32}$/)
     key+'_'+name
   else
     raise 'Invalid queue name'
