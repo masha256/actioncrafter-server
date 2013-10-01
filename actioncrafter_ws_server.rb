@@ -41,7 +41,7 @@ def handle_websocket_message(msg, ws)
 
     channel, evt = data.split(' ', 2)
 
-    e = Actioncrafter::Event.new(evt)
+    event = Actioncrafter::Event.new(evt)
 
     begin
       klass = Object.const_get('Action').const_get(channel.capitalize)
@@ -56,7 +56,7 @@ def handle_websocket_message(msg, ws)
 
       puts "No class found for channel #{channel}, publishing to #{redis_channel} instead"
 
-      REDIS.publish(redis_channel, e.to_json)
+      REDIS.publish(redis_channel, event.to_json)
     end
 
 
