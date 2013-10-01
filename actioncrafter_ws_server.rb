@@ -137,7 +137,7 @@ puts "Starting websocket server"
 
 
 EM.run do
-  EM::WebSocket.start(:host => "0.0.0.0", :port => 8081, :debug => false) do |ws|
+  EM::WebSocket.start(:host => "0.0.0.0", :port => 8080, :debug => false) do |ws|
 
     ws.onopen do |handshake|
 
