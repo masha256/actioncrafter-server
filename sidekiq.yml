@@ -1,4 +1,4 @@
 ---
 :verbose: false
 :concurrency:  25
-:require:  ./actioncrafter.rb
+:require: ./workers.rb

@@ -53,6 +53,7 @@ get '/action' do
     puts "No class found for action #{params[:name]}, queuing instead"
 
     REDIS.rpush(queue_name(source, params[:key]), event.to_json)
+    REDIS.publish(queue_name(source, params[:key]), 'add')
   end
 
 
@@ -90,7 +91,7 @@ get '/queue/:queue/event' do
 end
 
 
-get '/queue/:queue/pop' do
+get '/queue/:queue/next' do
 
   check_api_key(params[:key])
 

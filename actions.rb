@@ -1,1 +1,1 @@
-require './actions/sendsms'
+require './actions/sms'
