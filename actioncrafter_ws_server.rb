@@ -23,11 +23,6 @@ CLIENTS = {}
 
 def check_api_key(key)
   REDIS.hexists(API_KEYS, key)
-  #REDIS.hincrby(API_KEYS, key, 1)
-end
-
-def parse_message(msg)
-  message = JSON.parse(msg)
 end
 
 
@@ -46,7 +41,7 @@ def handle_websocket_message(msg, ws)
     begin
       klass = Object.const_get('Action').const_get(channel.capitalize)
       action = klass.new
-      action.process(e)
+      action.process(event)
     rescue Exception => e
 
       if e
